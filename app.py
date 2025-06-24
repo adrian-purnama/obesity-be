@@ -10,6 +10,10 @@ with open("best_xgb_model.pkl", "rb") as f:
 
 app = FastAPI()
 
+@app.get("/test")
+def test():
+    return {"message": "hehe"}
+    
 # Define request schema
 class ObesityInput(BaseModel):
     Age: int

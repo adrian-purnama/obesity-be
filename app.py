@@ -1,20 +1,23 @@
-# app.py
-import pickle
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from pydantic import BaseModel
-import numpy as np
+import pandas as pd
+import pickle
 
-# Load model
-with open("best_xgb_model.pkl", "rb") as f:
+# Load pipeline (preprocessor + model) and label encoder
+with open("xgb_pipeline.pkl", "rb") as f:
     model = pickle.load(f)
+
+with open("label_encoder.pkl", "rb") as f:
+    le = pickle.load(f)
 
 app = FastAPI()
 
+# Optional: test endpoint
 @app.get("/test")
 def test():
     return {"message": "hehe"}
-    
-# Define request schema
+
+# Define input format (must match training columns exactly)
 class ObesityInput(BaseModel):
     Age: int
     Height: float
@@ -35,15 +38,13 @@ class ObesityInput(BaseModel):
 
 @app.post("/predict")
 def predict(data: ObesityInput):
-    # Convert input to list of features — must match training preprocessing
-    input_data = [[
-        data.Age, data.Height, data.Weight, data.FCVC, data.NCP, data.CH2O,
-        data.FAF, data.TUE, data.Gender, data.family_history_with_overweight,
-        data.FAVC, data.CAEC, data.SMOKE, data.SCC, data.CALC, data.MTRANS
-    ]]
-    
-    # Preprocessing must match training! This is just a placeholder.
-    # You need to load and apply your preprocessor pipeline here.
+    # Convert input to DataFrame
+    input_df = pd.DataFrame([data.dict()])
 
-    prediction = model.predict(input_data)
-    return {"prediction": int(prediction[0])}
+    # Predict using full pipeline
+    pred_encoded = model.predict(input_df)
+
+    # Decode label
+    pred_label = le.inverse_transform(pred_encoded)[0]
+
+    return {"prediction": pred_label}
